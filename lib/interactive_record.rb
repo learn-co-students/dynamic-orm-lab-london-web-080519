@@ -17,19 +17,21 @@ class InteractiveRecord
         end
         column_names.compact
     end
-
+    
     def initialize(attributes={})
         attributes.each{|key, value| self.send("#{key}=", value)}
+    end
+
+    def save
+        sql = "INSERT INTO #{table_name_for_insert} (#{col_names_for_insert}) VALUES (#{values_for_insert})"
+        DB[:conn].execute(sql)
+        @id = DB[:conn].execute("SELECT last_insert_rowid() FROM #{table_name_for_insert}")[0][0]
     end
 
     def table_name_for_insert
         self.class.table_name
     end
-
-    def col_names_for_insert
-        self.class.column_names.delete_if{|column| column == "id"}.join(", ")
-    end
-
+    
     def values_for_insert
         values = []
         self.class.column_names.each do |column|
@@ -38,21 +40,17 @@ class InteractiveRecord
         values.join(", ")
     end
 
-    def save
-        # table_info = DB[:conn].execute("PRAGMA table_info (students)")
-        binding.pry
-        sql = "INSERT INTO #{table_name_for_insert} (#{col_names_for_insert}) VALUES (#{values_for_insert})"
-        DB[:conn].execute(sql)
-        @id = DB[:conn].execute("SELECT last_insert_rowid() FROM #{table_name_for_insert}")[0][0]
+    def col_names_for_insert
+        self.class.column_names.delete_if{|column| column == "id"}.join(", ")
     end
 
     def self.find_by_name(name)
-        sql = "SELECT * FROM #{table_name} WHERE name = ?"
+        sql = "SELECT * FROM #{self.table_name} WHERE name = ?"
         DB[:conn].execute(sql, name)
     end
 
     def self.find_by(value)
-        sql = "SELECT * FROM #{table_name} WHERE ? IN #{column_names.split(", ")}"
+        sql = "SELECT * FROM #{self.table_name} WHERE ? IN #{column_names.split(", ")}"
         DB[:conn].execute(sql, value)
     end
 end
